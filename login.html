@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>로그인 · 회원가입 | AI 아카데미 영업 파트너</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="shell">
+  <div class="auth">
+    <aside class="auth__side">
+      <div>
+        <img src="assets/logo-light.png" alt="AI Academy" style="height:30px;width:auto;position:relative">
+        <h2>영업 파트너 전용<br>플랫폼</h2>
+        <p>가입하면 나만의 고유 ID가 발급되고, 강의별 신청폼 링크를 바로 복사할 수 있습니다.</p>
+      </div>
+      <img class="prof" src="assets/prof.webp" alt="장안선 교수">
+    </aside>
+    <section class="auth__form">
+      <div class="tabs" role="tablist"><button type="button" data-m="login" class="on">로그인</button><button type="button" data-m="signup">회원가입</button></div>
+
+      <form id="f-login" novalidate>
+        <div class="field"><label for="l-id">아이디 또는 이메일</label><input id="l-id" type="text" autocomplete="username" required placeholder="이메일 주소 (관리자는 아이디)"></div>
+        <div class="field"><label for="l-pw">비밀번호</label><input id="l-pw" type="password" autocomplete="current-password" required></div>
+        <p class="err" id="l-err" role="alert"></p>
+        <button class="btn btn--grad btn--block btn--lg" id="l-btn" type="submit">로그인</button>
+        <p style="text-align:center;margin:18px 0 0"><button type="button" id="l-reset" style="border:0;background:none;color:var(--muted);text-decoration:underline;font-size:14px">비밀번호를 잊으셨나요?</button></p>
+      </form>
+
+      <form id="f-signup" novalidate hidden>
+        <div class="field"><label for="s-name">이름<span class="req">*</span></label><input id="s-name" type="text" autocomplete="name" required></div>
+        <div class="field"><label for="s-phone">연락처<span class="req">*</span></label><input id="s-phone" type="tel" autocomplete="tel" required placeholder="010-0000-0000"></div>
+        <div class="field"><label for="s-email">이메일<span class="req">*</span></label><input id="s-email" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="s-pw">비밀번호 (6자 이상)<span class="req">*</span></label><input id="s-pw" type="password" autocomplete="new-password" required minlength="6"></div>
+        <div class="field"><label for="s-pw2">비밀번호 확인<span class="req">*</span></label><input id="s-pw2" type="password" autocomplete="new-password" required></div>
+        <div class="field"><label>정산 계좌 <span class="hint" style="font-weight:500">(선택 · 휴대폰 인증 후 입력 / 나중에 대시보드에서도 등록할 수 있어요)</span></label><div id="s-bank"></div></div>
+        <label class="opt" style="margin-bottom:14px"><input type="checkbox" id="s-agree"><span style="font-size:13.5px">개인정보 수집·이용(이름, 연락처, 이메일, 정산 계좌 / 영업 실적 관리 및 수익 정산 목적)에 동의합니다.</span></label>
+        <p class="err" id="s-err" role="alert"></p>
+        <button class="btn btn--grad btn--block btn--lg" id="s-btn" type="submit">가입하고 내 ID 받기</button>
+      </form>
+    </section>
+  </div>
+</main>
+<script type="module" src="js/login.js"></script>
+</body>
+</html>

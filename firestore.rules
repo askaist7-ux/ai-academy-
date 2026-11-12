@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 관리자 계정: 아이디 kaistweb → 이메일 kaistweb@aiacademy.app (js/config.js 의 adminId/adminDomain 과 동일해야 함)
+    // 관리자 계정은 setup-admin 스크립트로 가장 먼저 생성해 두세요. (이메일은 고유값이라 다른 사람이 선점할 수 없습니다)
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'kaistweb@aiacademy.app';
+    }
+    function signedIn() { return request.auth != null; }
+    function refDoc(refId) { return get(/databases/$(database)/documents/refs/$(refId)).data; }
+
+    // 강의 설정: 누구나 읽기, 관리자만 수정
+    match /courses/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 영업 파트너 프로필
+    match /users/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.auth.token.email != 'kaistweb@aiacademy.app'
+        && request.resource.data.keys().hasOnly(['name', 'phone', 'email', 'refId', 'active', 'createdAt'])
+        && request.resource.data.active == true
+        && request.resource.data.refId.matches('^AIA-[A-Z0-9]{6}$')
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 30
+        && request.resource.data.email is string && request.resource.data.email.size() <= 100
+        && request.resource.data.createdAt == request.time;
+      allow delete: if isAdmin();
+      // 본인 정산 계좌: 휴대폰 인증(SMS)을 마친 계정(토큰에 phone_number 존재)만, 계좌 관련 필드만 수정 가능
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid
+        && request.auth.token.phone_number != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bankName', 'bankAccount', 'bankHolder', 'phoneVerifiedAt'])
+        && request.resource.data.bankName is string && request.resource.data.bankName.size() > 0 && request.resource.data.bankName.size() <= 20
+        && request.resource.data.bankAccount is string && request.resource.data.bankAccount.matches('^[0-9]{8,20}$')
+        && request.resource.data.bankHolder is string && request.resource.data.bankHolder.size() > 0 && request.resource.data.bankHolder.size() <= 30
+        && request.resource.data.phoneVerifiedAt == request.time);
+    }
+
+    // 고유 ID 공개 조회용 (신청서에서 영업자 이름 표시/검증) — 목록 조회는 관리자만
+    match /refs/{refId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if signedIn() && refId.matches('^AIA-[A-Z0-9]{6}$')
+        && request.resource.data.keys().hasOnly(['uid', 'name', 'active', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.active == true
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.refId == refId;
+      allow update, delete: if isAdmin();
+    }
+
+    // 신청서 원본(개인정보 포함): 신청자는 작성만, 조회/처리는 관리자만
+    match /applications/{id} {
+      allow read, update, delete: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly([
+          'courseId', 'refId', 'refUid', 'refName', 'campaign', 'applicantName', 'phone', 'email', 'org',
+          'answers', 'status', 'amount', 'commission', 'settled', 'createdAt'])
+        && request.resource.data.courseId in ['corporate', 'regular8', 'emoticon']
+        && request.resource.data.status == 'applied'
+        && request.resource.data.amount == 0 && request.resource.data.commission == 0
+        && request.resource.data.settled == false
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.applicantName is string
+        && request.resource.data.applicantName.size() > 0 && request.resource.data.applicantName.size() <= 60
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 30
+        && request.resource.data.answers is map && request.resource.data.answers.size() <= 40
+        && request.resource.data.campaign is string && request.resource.data.campaign.size() <= 60
+        && (
+          (request.resource.data.refId == 'direct' && request.resource.data.refUid == '')
+          || (request.resource.data.refId.matches('^AIA-[A-Z0-9]{6}$')
+              && refDoc(request.resource.data.refId).uid == request.resource.data.refUid
+              && refDoc(request.resource.data.refId).active == true)
+        );
+    }
+
+    // 영업 파트너용 실적(이름 마스킹된 요약): 본인 것만 조회
+    match /referrals/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.refUid == request.auth.uid);
+      allow update, delete: if isAdmin();
+      allow create: if request.resource.data.keys().hasOnly([
+          'appId', 'courseId', 'refId', 'refUid', 'maskedName', 'campaign', 'status', 'amount', 'commission', 'settled', 'createdAt'])
+        && request.resource.data.courseId in ['corporate', 'regular8', 'emoticon']
+        && request.resource.data.status == 'applied'
+        && request.resource.data.amount == 0 && request.resource.data.commission == 0
+        && request.resource.data.settled == false
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.appId == id
+        && request.resource.data.refId.matches('^AIA-[A-Z0-9]{6}$')
+        && refDoc(request.resource.data.refId).uid == request.resource.data.refUid
+        && getAfter(/databases/$(database)/documents/applications/$(id)).data.refUid == request.resource.data.refUid;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

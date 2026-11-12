@@ -1,0 +1,12 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 신청서 첨부파일: 누구나 업로드(20MB 미만, 수정 불가), 열람·삭제는 관리자만
+    match /uploads/{folder}/{file} {
+      allow create: if request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('application/.*|image/.*|text/.*');
+      allow read, delete: if request.auth != null && request.auth.token.email == 'kaistweb@aiacademy.app';
+      allow update: if false;
+    }
+  }
+}
